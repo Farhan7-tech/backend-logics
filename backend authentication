@@ -1,0 +1,78 @@
+const express = require("express")
+const jwt = require("jsonwebtoken")
+const jwtpass = "123456"
+const mongoose = require("mongoose")
+
+mongoose.connect("mongodb+srv://Farhan:farhaNeYmaR@farhan007.3ieeo.mongodb.net/users")
+
+const user = mongoose.model("user", {
+  name : String ,
+  username : String,
+  password : String,
+});
+
+const app = express();
+app.use(express.json());
+
+
+app.post('/signup', async function(req , res){
+
+  const username = req.body.username;
+  const password = req.body.password;
+  const name = req.body.name;
+
+  const existinguser = await user.findOne({username : username});
+
+  if(existinguser){
+    return res.status(400).send("user already exist")
+  }
+
+  const newuser = new user({
+     username : username ,
+    password : password,
+    name : name ,
+  });
+  newuser.save();
+  res.send("user created successfully");
+})
+
+
+app.post('/signin', async function(req , res){
+
+  const username = req.body.username;
+  const password = req.body.password;
+  const name = req.body.name;
+
+  const existinguser = await user.findOne({username : username , password : password});
+
+  if(existinguser){
+    const token = jwt.sign({username : username , name : name} , jwt);
+    res.status(200).json({
+      token : token,
+    })
+  }else{
+    res.status(400).send("user not found")
+  }
+})
+
+app.get("/users" , function(req , res){
+
+  const token = req.headers.authorization;
+  try{
+    const decode = jwt.verify(token , jwtpass);
+    const data = decode;
+    res.json({
+      username : data.username,
+      password : data.password,
+      name : data.name
+    })
+  }
+  catch(err){
+    res.status(401).json({
+      msg : "invalid token",
+    })
+  }
+})
+
+
+app.listen(3000);
